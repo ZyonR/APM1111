@@ -1,0 +1,117 @@
+---
+title: "Formative Assessment 7"
+author: "Ramilo, Zion John Yousef T."
+output: github_document
+---
+```{r setup, include=FALSE}
+library(datasets)
+library(tidyverse)
+library(car)
+library(Hmisc)
+```
+**Dataset and Content**
+
+Results from an experiment to compare yields (as measured by dried
+weight of plants) obtained under a control and two different treatment
+conditions.Wherein we need to know if there is significant differences
+between the means of our different groups.
+
+**Assuption Checks**
+Assumption 1:
+You have one dependent variable that is measured at the continuous level.
+```{r}
+head(PlantGrowth)
+```
+**Remark:**
+Given the data shown above our independent variable are the different groups that the experiment has and the weight is the dependent variable where weight is measured at a continous level.
+
+Assumption 2:
+You have one independent variable that consists of two categorical, independent groups.
+```{r}
+unique(PlantGrowth$group)
+```
+**Remark:**
+Given by the values above we can observe that there are 3 distinct values for the group feature where we have "ctrl" the control group, "trt1" the treatment group 1, "trt2" the treatment group 2. Therefore, assumption 2 is satisfied by the data provided.
+
+Assumption 3:
+You should have independence of observations.
+
+**Remark:**
+Based on the given data there are no direct relationships between the levels within the groups therefore assumption 3 is satisfied.
+
+Assumption 4:
+There should be no significant outliers in the three or more groups of your independent variable in terms of the dependent variable.
+
+```{r}
+boxplot(weight ~ group, data = PlantGrowth,
+        main = "Box Plot of the plant weight for each group",
+        xlab = "Group",
+        ylab = "Weight",
+        col = "lightblue")
+```
+**Remark:**
+We can observe that the group for "trt1" contains a significant outlier, however we have a dilemma wherein we cannot necessaryly remove them since each group has the same number of plants wieghted. To avoid Type I and Type 2 errors we can Winsorize the outlier such that it will have the value equated to the nearest non-outlier value.
+
+```{r}
+PlantGrowth[17,"weight"] <- 5.87
+boxplot(weight ~ group, data = PlantGrowth,
+        main = "Box Plot of the plant weight for each group",
+        xlab = "Group",
+        ylab = "Weight",
+        col = "lightblue")
+```
+With Winsorize Assumption 4 is satisfied.
+
+Assumption 5:
+Your dependent variable should be approximately normally distributed for each group of the independent variable.
+
+```{r}
+ShapiroWilkTest <- PlantGrowth %>%
+  group_by(group) %>%
+  summarise(
+    shapiro_statistic = shapiro.test(weight)$statistic,
+    shapiro_pValue = shapiro.test(weight)$p.value
+  )
+ShapiroWilkTest
+```
+**Remark:**
+Since the p-value for each group is normal by our large p-values, therefore the the dependent variable for each group is normally distributed, hence assumption 5 is satisfied.
+
+Assumption 6:
+You have homogeneity of variances (i.e., the variance of the dependent variable is equal in each group of your independent variable).
+```{r}
+LeveneTest <- PlantGrowth %>%
+  group_by(group) %>%
+  reframe(
+    leveneStatistic = leveneTest(weight ~ group, data = .)$`F value`,
+    levene_pValue = leveneTest(weight ~ group, data = .)$`Pr(>F)`
+  )
+LeveneTest
+```
+
+**Remark:**
+Given by the p-value of the levene's test for each groups we can determine that the variances of the dependent variable are equal across all groups.Therefore homogeneity of variance is true.
+
+**Descriptive Statistics**
+```{r}
+describe(PlantGrowth$weight)
+```
+
+Since our dataset passed all assumptions of the One-way ANOVA we can perform the test.
+
+H_0: There is no significant difference on weight between treatment groups
+H_1: There is a significant difference of weight on at least one of the treatment groups
+```{r}
+anova_result <- aov(weight ~ group, data = PlantGrowth)
+summary(anova_result)
+```
+Given by the p-value we can reject our null hypothesis, therefore we can say that there exist significant difference in means between the three groups.
+
+**Post-Hoc Test**
+Perform using tukeys
+```{r}
+anova_result <- aov(weight ~ group, data = PlantGrowth)
+tukey <- TukeyHSD(anova_result)
+tukey
+```
+By the post-hoc test shows that only the comparison between trt2 and trt1 are significant differences whilst the other comparisons are non- significant.
