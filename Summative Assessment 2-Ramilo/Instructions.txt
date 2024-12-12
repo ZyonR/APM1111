@@ -1,0 +1,21 @@
+Data Description
+Mice are used in an experiment to test drugs that may prevent Alzheimer’s disease. Half the mice are transgenic – have been genetically modified to have Alzheimer’s disease. The other half of the mice are “wild type” – they have not been modified in any way, and are considered free of Alzheimer’s disease. The mice are assigned to treatment conditions and given one of four drugs, then tested on memory using a maze. The number of errors made in the maze is recorded for the Training Day and the Memory Day.
+
+
+Download the Alzheimer's Mice dataset here.Download Download the Alzheimer's Mice dataset here.
+
+Directions
+Analyze data using a 2-Factor (2B) ANOVA. (Just choose one of the two below. If you choose two, the other one will be considered a bonus item wit a maximum of 15 points.)
+
+Compare the training day errors based on drug treatments and AD status.
+
+Compare the memory day errors based on drug treatments and AD status.
+
+ Check the assumptions underlying the said ANOVA type.
+Make a report in APA format, including the checking of the assumptions.
+Provide a Github link to your file answering this problem. (5 points will be automatically deducted if without a Github link.
+Note: 
+
+Use Jupyter Notebook or R Studio with the proper formatting of your markdown and code. You may check your results using JASP.
+Upload a Word file containing your Github link to your file or upload your R output or Python output using the tool below. 
+Be sure that your outputs/files already contain the results of your analysis and I don't have to run your code to check the output results. (Minus 5 if I still have to run your code to check your outputs.) 
