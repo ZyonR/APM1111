@@ -1,0 +1,248 @@
+---
+title: "Statistics Summative Assessment 2"
+author: "Ramilo, Zion John Yousef"
+date: "`r Sys.Date()`"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(car)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(Hmisc)
+library(gridExtra)
+library(DescTools)
+library(effectsize)
+```
+
+```{r}
+library(readr)
+data <- read_csv("Alzheimers_Mice_Data.csv")
+head(data)
+```
+
+Assumptions for Two-Way ANOVA:
+
+Assumption #1: You have one dependent variable that is measured at the continuous level.
+**Remark**: Based on the given dataset there are 2 dependent variables however they will be measured seperately, these variables are the mistakes made during training and mistakes made during memory day, to which is represented as an ordinal data; counting the number of mistakes made by the mice, which entails that the two variables are of continous levels.
+
+Assumption #2: You have two independent variable that consists of two or more categorical, independent groups.
+**Remark**: The independent variables are the precence of Alzheimers within each mice and the second independent vatriable is the treatment variable which represents what type out of the four drug types each mice was injected with. These entails that the second assumption of the two-way ANOVA is satisfied.
+
+Assumption #3: You should have independence of observations, which means that there is no relationship between the observations in each group of the independent variable or among the groups themselves. 
+**Remark:** Based on the description of the data the researchers methodology is introducing two different kinds of mice where one is genetically engineered to have the precence of Alzheimers while the others are wild mice that was checked to have no presence of Alzheimers. In addition the researchers was able to stratify each mice for each drug treatments, thus satisfying the assumption of independent groups.
+
+Assumption #4: There should be no significant outliers in the three or more groups of your independent variable in terms of the dependent variable.
+```{r}
+data$group = interaction(data$AD_Status,data$Treatment,sep="-")
+plot1 <- ggplot(data, aes(x = group, y = Training, fill = group))+
+  geom_boxplot()+
+  theme_minimal()+
+  labs(
+    title = "Training Mistakes by Alzheimers Disease and Drug Type",
+    x = "Group (Alzheimers Disease - Drug Type)",
+    y = "Training Mistakes"
+  )
+plot2<- ggplot(data, aes(x = group, y = Memory, fill = group))+
+  geom_boxplot()+
+  theme_minimal()+
+  labs(
+    title = "Memory Mistakes by Alzheimers Disease and Drug Type",
+    x = "Group (Alzheimers Disease - Drug Type)",
+    y = "Memory Mistakes"
+  )
+
+grid.arrange(plot1, plot2, ncol = 1)
+```
+```{r}
+
+data$Memory[10] <- 13
+plot1 <- ggplot(data, aes(x = group, y = Training, fill = group))+
+  geom_boxplot()+
+  theme_minimal()+
+  labs(
+    title = "Training Mistakes by Alzheimers Disease and Drug Type",
+    x = "Group (Alzheimers Disease - Drug Type)",
+    y = "Training Mistakes"
+  )
+plot2<- ggplot(data, aes(x = group, y = Memory, fill = group))+
+  geom_boxplot()+
+  theme_minimal()+
+  labs(
+    title = "Memory Mistakes by Alzheimers Disease and Drug Type",
+    x = "Group (Alzheimers Disease - Drug Type)",
+    y = "Memory Mistakes"
+  )
+
+grid.arrange(plot1, plot2, ncol = 1)
+```
+**Remark**: Thereseems to be a significant outlier wihtin the memory observations for the mice without alzheimers and are subjected to the drug type 2 however using the Winzorise Technique all interactions between the individual groups does not contain any significant outliers, to which satisfies the assumption of the fourth assumption of the two-way ANOVA. In addition 
+
+Assumption #5: Your dependent variable should be approximately normally distributed for each group of the independent variable.
+```{r}
+ShapiroWilkTest_training <- data %>%
+  group_by(group) %>%
+  summarise(
+    shapiro_statistic = shapiro.test(Training)$statistic,
+    shapiro_pValue = shapiro.test(Training)$p.value
+  )
+ShapiroWilkTest_memory <- data %>%
+  group_by(group) %>%
+  summarise(
+    shapiro_statistic = shapiro.test(Memory)$statistic,
+    shapiro_pValue = shapiro.test(Memory)$p.value
+  )
+combined_results <- bind_cols(
+  ShapiroWilkTest_training,
+  ShapiroWilkTest_memory %>% select(-group)
+)
+combined_results
+```
+**Remark**: Each group was subjected to a Shapiro-Wilk-Test to determine whether or not the data was normally distributed, the table shows that the p-values for the training observation (Shapiro p-value...3) was all above 0.05 to which implies that we cannot reject the null hypothesis which indicates normality for the training observation, for the memory observations the p-value (Shapiro p-value...5) also is above 0.05 which  implies normality for the memory observations. Hence, the data satisfies the assumption of normality.
+
+Assumption #6. You have homogeneity of variances (i.e., the variance of the dependent variable is equal in each group of your independent variable).
+
+```{r}
+LeveneTest_training <- data %>%
+  group_by(group) %>%
+  reframe(
+    leveneStatistic = leveneTest(Training ~ group, data = .)$`F value`,
+    levene_pValue = leveneTest(Training ~ group, data = .)$`Pr(>F)`
+  ) %>% 
+  distinct(group, .keep_all = TRUE)
+LeveneTest_memory <- data %>%
+  group_by(group) %>%
+  reframe(
+    leveneStatistic = leveneTest(Memory ~ group, data = .)$`F value`,
+    levene_pValue = leveneTest(Memory ~ group, data = .)$`Pr(>F)`
+  ) %>% 
+  distinct(group, .keep_all = TRUE)
+```
+```{r}
+# Test of Homogeneity of Variances (Levene's Test) on Training Observations
+print(LeveneTest_training)
+```
+```{r}
+# Test of Homogeneity of Variances (Levene's Test) on Memory Observations 
+print(LeveneTest_memory)
+```
+**Remark**: Based on the given tables of the memory and training observations and using the Levene's test to determine the data's homogeneity of variances has shown a p-value of greater than 0.05 to which entails that for each observation there is equal variances.
+
+Since the data and groups satisfys all assumptions of teh two-way ANOVA, it is eligable for the hypothesis testing. Where we will define our null hypothesis and alternative hypothesis to be the following:
+
+H0: There is no significant interaction effect on Training Mistakes between presence of Alzheimers Disease and drug type.
+H1: There is a significant interaction effect on Training Mistakes between presence of Alzheimers Disease and drug type.
+
+Descriptives
+```{r}
+summaryAD_status <- data %>% 
+  group_by(AD_Status) %>% 
+  reframe(
+    count = n(),
+    mean_train = mean(Training),
+    sd_train = sd(Training),
+    SE_train = sd(Training) / sqrt(length(Training)),
+    CV_train = (sd(Training) / mean(Training)) * 100,
+    mean_memory = mean(Memory),
+    sd_memory = sd(Memory),
+    SE_memory = sd(Memory) / sqrt(length(Memory)),
+    CV_memory = (sd(Memory) / mean(Memory)) * 100
+  )%>%
+  pivot_longer(
+    cols = c(mean_train, sd_train, SE_train, CV_train, mean_memory, sd_memory, SE_memory, CV_memory),
+    names_to = "stat_type", 
+    values_to = "stat_value"
+  )
+
+summaryTreatment <- data %>% 
+  group_by(Treatment) %>% 
+  reframe(
+    count = n(),
+    mean_train = mean(Training),
+    sd_train = sd(Training),
+    SE_train = sd(Training) / sqrt(length(Training)),
+    CV_train = (sd(Training) / mean(Training)) * 100,
+    mean_memory = mean(Memory),
+    sd_memory = sd(Memory),
+    SE_memory = sd(Memory) / sqrt(length(Memory)),
+    CV_memory = (sd(Memory) / mean(Memory)) * 100
+  )%>%
+  pivot_longer(
+    cols = c(mean_train, sd_train, SE_train, CV_train, mean_memory, sd_memory, SE_memory, CV_memory),
+    names_to = "stat_type", 
+    values_to = "stat_value"
+  )
+
+summaryInteraction <- data %>% 
+  group_by(group) %>% 
+  reframe(
+    count = n(),
+    mean_train = mean(Training),
+    sd_train = sd(Training),
+    SE_train = sd(Training) / sqrt(length(Training)),
+    CV_train = (sd(Training) / mean(Training)) * 100,
+    mean_memory = mean(Memory),
+    sd_memory = sd(Memory),
+    SE_memory = sd(Memory) / sqrt(length(Memory)),
+    CV_memory = (sd(Memory) / mean(Memory)) * 100
+  )%>%
+  pivot_longer(
+    cols = c(mean_train, sd_train, SE_train, CV_train, mean_memory, sd_memory, SE_memory, CV_memory),
+    names_to = "stat_type", 
+    values_to = "stat_value"
+  )
+```
+
+```{r}
+print("Summary by AD Status")
+print(as.data.frame(summaryAD_status))
+```
+
+```{r}
+print("Summary by Treatment")
+print(as.data.frame(summaryTreatment))
+```
+
+```{r}
+print("Summary by Interaction")
+print(as.data.frame(summaryInteraction))
+```
+```{r}
+print("Training observation")
+anova_result <- aov(Training ~ AD_Status * Treatment, data = data)
+anova_result_summary <- summary(anova_result)
+print(anova_result_summary)
+
+eta_squared_training <- eta_squared(anova_result)
+print("Partial Eta-Squared for Training:")
+print(eta_squared_training)
+
+print("Memory observation")
+anova_result_memory <- aov(Memory ~ AD_Status * Treatment, data = data)
+anova_result_memory_summary <- summary(anova_result_memory)
+print(anova_result_memory_summary)
+
+eta_squared_memory <- eta_squared(anova_result_memory)
+print("Partial Eta-Squared for Memory:")
+print(eta_squared_memory)
+```
+**Remark**:
+
+Training Observations:
+
+For the training observations the precense of Alzheimers Disease, F(1,36) = 1.010, p= 0.322, had no significant difference on the outcome of mistakes for the training observation regardless whether ir not a mice has Alzheimers Disease. With an $\eta^2=0.03$ shows a small effect size which implies only 3% of the variance in the training observations can be explained.
+
+Treatment, F(1,36) = 1.217, p= 0.277, also has shown no significance, which implies that regardless of drug  type there would be no difference in the outcome of the training observations. With an $\eta^2=0.03$ shows a small effect size which implies only 3% of the variance in the training observations can be explained.
+
+The interaction with the tratment and precense of the Alzheimers Disease on mice have shown, F(1,36) = 1.817, p= 0.187, also has shown no significance, which implies that there exist no signifiact effect of the precense of the Alzheimers Disease and Drug type on determining the number of mistakes within the training observations.With an $\eta^2=0.05$ shows a negligable effect size which implies only 5% of the variance in the training observations can be explained.
+
+Memory Observations:
+
+For the memory observations the precense of Alzheimers Disease, F(1,36) = 75.662, p= 2.24e-10, was very significant in difference on the outcome of mistakes for the memory observation. With an $\eta^2=0.68$ shows a large effect size which implies that 68% of the variance in the memory observations can be explained.
+
+Treatment, F(1,36) = 2.906, p= 0.097, also has shown no significance, which implies that regardless of drug  type there would be no difference in the outcome of the memory observations. With an $\eta^2=0.07$ shows a small effect size which implies only 7% of the variance in the memory observations can be explained.
+
+The interaction with the treatment and precense of the Alzheimers Disease on mice have shown, F(1,36) = 0.430, p= 0.516, also has shown no significance, which implies that there exist no signifiact effect of the precense of the Alzheimers Disease and Drug type on determining the number of mistakes within the memory observations.With an $\eta^2=0.01$ shows a negligable effect size which implies only 1% of the variance in the memory observations can be explained.
